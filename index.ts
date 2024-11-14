@@ -20,7 +20,6 @@ function rebuildSourceFromLexer(lexer: Lexer) {
 }
 export function createParser(src: string) {
 	const normSrc = src.replaceAll(/\r\n/g, "\n");
-	const iter = normSrc.split("").values();
 
 	{
 		const testLex = new Lexer(normSrc.split("").values());
@@ -29,6 +28,7 @@ export function createParser(src: string) {
 		console.log("-----------------------");
 	}
 
+	const iter = normSrc.split("").values();
 	const lexer = new Lexer(iter);
 	const parser = new Parser(lexer);
 	return parser;

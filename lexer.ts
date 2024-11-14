@@ -25,16 +25,84 @@ export class Lexer implements IterableIterator<Token> {
 
 	private start = 0;
 	private end = 0;
-	private chars: IterableIterator<string>;
 
-	constructor(chars: IterableIterator<string>) {
-		this.chars = chars;
-
+	constructor(private chars: Iterator<string>) {
 		this.consume();
 		this.consume();
 	}
 
-	[Symbol.iterator](): IterableIterator<Token> {
+	static filtered(
+		chars: Iterator<string>,
+		filter: (t: Token) => boolean,
+	): IterableIterator<Token> {
+		const lexer = new Lexer(chars);
+
+		return {
+			next() {
+				const option = lexer.next();
+
+				if (option.done) return option;
+
+				if (filter(option.value)) return option;
+
+				console.log(this);
+				return this.next();
+			},
+			[Symbol.iterator]() {
+				return this;
+			},
+		};
+	}
+
+	static mapped<T>(
+		chars: Iterator<string>,
+		map: (t: Token) => T,
+	): IterableIterator<T> {
+		const lexer = new Lexer(chars);
+
+		return {
+			next() {
+				const option = lexer.next();
+
+				if (option.done) return { done: true, value: undefined as unknown };
+
+				return { done: false, value: map(option.value) };
+			},
+			[Symbol.iterator]() {
+				return this;
+			},
+		};
+	}
+
+	static filterMap<T>(
+		chars: Iterator<string>,
+		filter: (t: Token) => boolean,
+		map: (t: Token) => T,
+	): IterableIterator<T> {
+		const lexer = new Lexer(chars);
+
+		const next = (): IteratorResult<T> => {
+			const option = lexer.next();
+
+			if (option.done) return { done: true, value: undefined as unknown };
+
+			if (filter(option.value)) {
+				return { done: false, value: map(option.value) };
+			}
+
+			// If the token does not pass the filter, continue to the next one
+			return next();
+		};
+
+		return {
+			next,
+			[Symbol.iterator]() {
+				return this;
+			},
+		};
+	}
+
+	[Symbol.iterator]() {
 		return this;
 	}
 
@@ -253,6 +321,9 @@ export class Lexer implements IterableIterator<Token> {
 			value = this.eatDecimalNumber();
 		}
 
+		if (this.ch0 === "_") {
+			throw new Error("Trailing _ are not allowed");
+		}
 		const end = this.end;
 		return new Token(TokenKind.Number, span(start, end), value);
 	}
@@ -280,7 +351,11 @@ export class Lexer implements IterableIterator<Token> {
 
 		let isFloat = false;
 
-		if (this.ch0 !== null && /^[.eE]$/.test(this.ch0)) {
+		if (
+			(this.ch0 === "." && !this.isNameStart(this.ch1)) ||
+			this.ch0 === "e" ||
+			this.ch0 === "E"
+		) {
 			const dotOrE = this.consume();
 			value += dotOrE; // . e or E
 
@@ -328,12 +403,33 @@ export class Lexer implements IterableIterator<Token> {
 		return val;
 	}
 
+	private eatDigit(radix: number) {
+		if (this.ch0 && isDigitOfRadix(this.ch0, radix)) {
+			return this.consume();
+		}
+
+		return null;
+	}
 	private runRadix(radix: number): string {
 		let res = "";
 
-		while (this.ch0 !== null && isDigitOfRadix(this.ch0, radix))
-			res += this.consume();
+		for (;;) {
+			const digit = this.eatDigit(radix);
 
+			if (digit) {
+				res += digit;
+				continue;
+			}
+
+			if (
+				this.ch0 &&
+				this.ch1 &&
+				this.ch0 === "_" &&
+				isDigitOfRadix(this.ch1, radix)
+			) {
+				this.consume();
+			} else break;
+		}
 		return res;
 	}
 

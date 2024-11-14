@@ -30,13 +30,10 @@ export class EmptyAssignmentError extends ParseError {
 }
 
 export class Parser {
-	private tokens: IterableIterator<Token>;
-
 	private t0: Token | null = null;
 	private t1: Token | null = null;
 
-	constructor(tokens: IterableIterator<Token>) {
-		this.tokens = tokens;
+	constructor(private tokens: Iterator<Token>) {
 		this.consume();
 		this.consume();
 	}
