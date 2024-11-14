@@ -1,87 +1,20 @@
-import { type SrcSpan, span } from "./ast.ts";
+import { Token, TokenKind } from "./token";
+import { span, type SrcSpan } from "./ast";
+import { dbgAssert } from "./utils";
 
-export function dbgtoken(token: Token) {
-	const map: Record<TokenKind, string> = {
-		[TokenKind.LBracket]: "[",
-		[TokenKind.RBracket]: "]",
-		[TokenKind.LParen]: "(",
-		[TokenKind.RParen]: ")",
-		[TokenKind.LCurly]: "{",
-		[TokenKind.RCurly]: "}",
-
-		[TokenKind.Let]: "let",
-		[TokenKind.Name]: `${token.data}`,
-		[TokenKind.Number]: `${token.data}`,
-		[TokenKind.String]: `${token.data}`,
-
-		[TokenKind.Plus]: "+",
-		[TokenKind.Minus]: "-",
-		[TokenKind.Star]: "*",
-		[TokenKind.Slash]: "/",
-		[TokenKind.Dot]: ".",
-
-		[TokenKind.Eq]: "=",
-		[TokenKind.EqEq]: "==",
-
-		[TokenKind.EOS]: "EndOfFile",
-		[TokenKind.NewLine]: "\n",
-	};
-
-	return `${map[token.kind]}`;
-}
-
-// biome-ignore lint/style/useEnumInitializers: <explanation>
-export enum TokenKind {
-	LBracket,
-	RBracket,
-	LCurly,
-	RCurly,
-	LParen,
-	RParen,
-
-	Let,
-	Name,
-	Number,
-	String,
-
-	Eq,
-	EqEq,
-
-	Plus,
-	Minus,
-	Star,
-	Slash,
-	Dot,
-
-	NewLine,
-	EOS,
-}
-
-export type StringTokenData = string;
-export type NumberTokenData = string;
-
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export class Token<Data = any> {
+export class LexError extends Error {
 	constructor(
-		public readonly kind: TokenKind,
-		public readonly span: SrcSpan,
-		public data: Data,
-	) {}
-
-	isEOS(): boolean {
-		return this.kind === TokenKind.EOS;
+		public location: SrcSpan,
+		message?: string,
+	) {
+		super(message);
 	}
+}
 
-	static NULL(kind: TokenKind, span: SrcSpan) {
-		return new Token(kind, span, null);
-	}
-
-	static isString(token: Token<unknown>): token is Token<string> {
-		return token.kind === TokenKind.String;
-	}
-
-	static isNumber(token: Token<unknown>): token is Token<number> {
-		return token.kind === TokenKind.String;
+export class UnterminatedStringLiteralError extends LexError {
+	constructor(location: SrcSpan) {
+		// TODO message processing can be done later
+		super(location, "Unterminated string literal");
 	}
 }
 
@@ -137,6 +70,70 @@ export class Lexer implements IterableIterator<Token> {
 		}
 	}
 
+	private eatQuotedString(): Token {
+		const start = this.start;
+		const quote = this.consume();
+		dbgAssert(quote === '"' || quote === "'");
+
+		const valueParts: string[] = [];
+
+		while (true) {
+			if (this.ch0 === quote) {
+				this.consume(); // closing qoute
+				break;
+			}
+
+			switch (this.ch0) {
+				case "\\":
+					this.consume(); // Move past the backslash
+					if (this.ch0 === null) {
+						throw new UnterminatedStringLiteralError(
+							span(this.start, this.start),
+						);
+					}
+					valueParts.push(this.handleEscapeSequence());
+					break;
+
+				// strings should terminate before new lines
+				case "\n":
+				case null:
+					throw new UnterminatedStringLiteralError(span(start, this.start));
+
+				default:
+					valueParts.push(this.consume() as string);
+					break;
+			}
+		}
+
+		const value = valueParts.join("");
+		const end = this.start;
+		return new Token(TokenKind.String, span(start, end), value);
+	}
+
+	private handleEscapeSequence(): string {
+		const escapeMap: Record<string, string> = {
+			n: "\n",
+			f: "\x0C",
+			t: "\t",
+			r: "\r",
+			"\\": "\\",
+			"0": "\0",
+			"'": "'",
+			'"': '"',
+		};
+
+		const escapeChar = this.ch0;
+		this.consume(); // Consume the escape character
+
+		if (escapeChar && escapeChar in escapeMap) {
+			return escapeMap[escapeChar];
+		}
+
+		// Default to returning the literal sequence if it's not a recognized escape
+		// biome-ignore lint/style/useTemplate: <explanation>
+		return "\\" + (escapeChar ?? "");
+	}
+
 	private eatSingleCharacter() {
 		const start = this.start;
 
@@ -145,8 +142,16 @@ export class Lexer implements IterableIterator<Token> {
 			"-": TokenKind.Minus,
 			"*": TokenKind.Star,
 			"/": TokenKind.Slash,
+
 			"=": TokenKind.Eq,
+			">": TokenKind.Gt,
+			"<": TokenKind.Lt,
+			"!": TokenKind.Bang,
+			"!=": TokenKind.NotEq,
 			"==": TokenKind.EqEq,
+			">=": TokenKind.GtEq,
+			"<=": TokenKind.LtEq,
+
 			"(": TokenKind.LParen,
 			")": TokenKind.RParen,
 			"{": TokenKind.LCurly,
@@ -154,6 +159,7 @@ export class Lexer implements IterableIterator<Token> {
 			"[": TokenKind.LBracket,
 			"]": TokenKind.RBracket,
 			".": TokenKind.Dot,
+			",": TokenKind.Comma,
 			"\n": TokenKind.NewLine,
 		};
 
@@ -162,6 +168,10 @@ export class Lexer implements IterableIterator<Token> {
 
 		let char: string | null = c;
 		switch (c) {
+			case '"':
+			case "'": {
+				return this.eatQuotedString();
+			}
 			case " ":
 			case "\t":
 			case "\n": {
@@ -173,17 +183,22 @@ export class Lexer implements IterableIterator<Token> {
 				}
 				break;
 			}
+
+			case "!":
+			case ">":
+			case "<":
 			case "=": {
-				if (this.ch1 === "==") {
-					char = "==";
-					this.consume(); // =
-					this.consume(); // =
+				if (this.ch1 === "=") {
+					let c = "";
+					c += this.consume();
+					c += this.consume();
+					char = c;
 				} else {
-					// biome-ignore lint/style/noNonNullAssertion: wont be null
-					char = this.consume()!;
+					char = this.consume();
 				}
 				break;
 			}
+
 			default:
 				this.consume();
 				break;
@@ -336,7 +351,7 @@ export class Lexer implements IterableIterator<Token> {
 		return /^[0-9]$/.test(c);
 	}
 
-	private eatname(): Token<string> {
+	private eatname(): Token {
 		const start = this.start;
 		let name = "";
 
@@ -347,7 +362,16 @@ export class Lexer implements IterableIterator<Token> {
 
 		const end = this.end;
 		const s = span(start, end);
-		return new Token(TokenKind.Name, s, name);
+
+		// TODO move to another fn
+		switch (name) {
+			case "true":
+				return new Token(TokenKind.True, s, true);
+			case "false":
+				return new Token(TokenKind.False, s, false);
+			default:
+				return new Token(TokenKind.Name, s, name);
+		}
 	}
 
 	private consume(): string | null {

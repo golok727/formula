@@ -4,13 +4,12 @@ import { createParser } from "./index";
 describe("lexer", () => {
 	test("simple formula", () => {
 		const src = `
-			a = (a * a) + 2 * (a * b) + b * b
-			b = a
+		 a = "hello\\n\\t \\" world" + 10
 		`.trim();
 
 		const parser = createParser(src);
 		const formula = parser.parse();
-		console.log(formula.items);
+		console.log(formula.items[0]);
 
 		expect(1).toBe(1);
 	});
