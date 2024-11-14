@@ -1,14 +1,14 @@
-import { Lexer, Token, TokenKind } from "./lexer";
+import type { Token, TokenKind } from "./lexer";
 import { Formula, Item } from "./ast";
 
 export class Parser {
-	private lexer: Lexer;
+	private tokens: IterableIterator<Token>;
 
 	private t0: Token | null = null;
 	private t1: Token | null = null;
 
-	constructor(public src: string) {
-		this.lexer = new Lexer(src);
+	constructor(tokens: IterableIterator<Token>) {
+		this.tokens = tokens;
 		this.consume();
 		this.consume();
 	}
@@ -28,7 +28,7 @@ export class Parser {
 		fn: () => T,
 		sep: TokenKind | null = null,
 	): T[] {
-		let res: T[] = [];
+		const res: T[] = [];
 
 		if (!this.t0) return res;
 
@@ -47,7 +47,7 @@ export class Parser {
 	private consume() {
 		const cur = this.t0;
 
-		const next_iter = this.lexer.next();
+		const next_iter = this.tokens.next();
 		const next = next_iter.done ? null : next_iter.value;
 
 		this.t0 = this.t1;

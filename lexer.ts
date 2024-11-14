@@ -1,7 +1,7 @@
-import { span, type SrcSpan } from "./ast.ts";
+import { type SrcSpan, span } from "./ast.ts";
 
 export function dbgtoken(token: Token) {
-	let map: Record<TokenKind, string> = {
+	const map: Record<TokenKind, string> = {
 		[TokenKind.LBracket]: "[",
 		[TokenKind.RBracket]: "]",
 		[TokenKind.LParen]: "(",
@@ -9,7 +9,7 @@ export function dbgtoken(token: Token) {
 		[TokenKind.LCurly]: "{",
 		[TokenKind.RCurly]: "}",
 
-		[TokenKind.Let]: `let`,
+		[TokenKind.Let]: "let",
 		[TokenKind.Name]: `${token.data}`,
 		[TokenKind.Number]: `${token.data}`,
 		[TokenKind.String]: `${token.data}`,
@@ -30,6 +30,7 @@ export function dbgtoken(token: Token) {
 	return `${map[token.kind]}`;
 }
 
+// biome-ignore lint/style/useEnumInitializers: <explanation>
 export enum TokenKind {
 	LBracket,
 	RBracket,
@@ -59,6 +60,7 @@ export enum TokenKind {
 export type StringTokenData = string;
 export type NumberTokenData = string;
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export class Token<Data = any> {
 	constructor(
 		public readonly kind: TokenKind,
@@ -84,17 +86,17 @@ export class Token<Data = any> {
 }
 
 export class Lexer implements IterableIterator<Token> {
-	private queue: Token<any>[] = [];
+	private queue: Token[] = [];
 	private ch0: string | null = null;
 	private ch1: string | null = null;
 
-	private start: number = 0;
-	private end: number = 0;
-	private chars: Iterator<string>;
+	private start = 0;
+	private end = 0;
+	private chars: IterableIterator<string>;
 
-	constructor(src: string) {
-		const normalizedSrc = src.replaceAll(/\r\n/g, "\n");
-		this.chars = normalizedSrc.split("").values();
+	constructor(chars: IterableIterator<string>) {
+		this.chars = chars;
+
 		this.consume();
 		this.consume();
 	}

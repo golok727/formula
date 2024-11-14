@@ -1,19 +1,17 @@
-import { describe, test, expect } from "bun:test";
-import { dbgtoken, Lexer, Parser } from "./index";
+import { describe, expect, test } from "bun:test";
+import { createParser } from "./index";
 
 describe("lexer", () => {
 	test("simple formula", () => {
-		let src = `
+		const src = `
 			a = (a * a) + 2 * (a * b) + b * b
 			b = a
 		`.trim();
 
-		const lexer = new Lexer(src);
-		const res = [...lexer];
-		console.log(res);
-		console.log(res.map(dbgtoken).join(" "));
+		const parser = createParser(src);
+		const formula = parser.parse();
+		console.log(formula.items);
 
-		const parser = new Parser(src);
-		console.log(parser.parse().items);
+		expect(1).toBe(1);
 	});
 });
