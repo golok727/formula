@@ -106,7 +106,7 @@ export class Lexer implements IterableIterator<Token> {
 	}
 
 	next(): IteratorResult<Token> {
-		let token = this.nextToken();
+		const token = this.nextToken();
 		return { value: token, done: token.isEOS() };
 	}
 
@@ -114,7 +114,8 @@ export class Lexer implements IterableIterator<Token> {
 		while (this.queue.length === 0) {
 			this.advance();
 		}
-		// always yeilds a token
+
+		// biome-ignore lint/style/noNonNullAssertion: this will not be null it will always yeild a token
 		return this.queue.shift()!;
 	}
 
@@ -139,7 +140,7 @@ export class Lexer implements IterableIterator<Token> {
 	private eatSingleCharacter() {
 		const start = this.start;
 
-		let map: Record<string, TokenKind> = {
+		const map: Record<string, TokenKind> = {
 			"+": TokenKind.Plus,
 			"-": TokenKind.Minus,
 			"*": TokenKind.Star,
@@ -178,6 +179,7 @@ export class Lexer implements IterableIterator<Token> {
 					this.consume(); // =
 					this.consume(); // =
 				} else {
+					// biome-ignore lint/style/noNonNullAssertion: wont be null
 					char = this.consume()!;
 				}
 				break;
@@ -249,9 +251,9 @@ export class Lexer implements IterableIterator<Token> {
 
 		if (val === "") throw new Error("empty radix");
 
-		let valInt = parseInt(val, radix);
+		const valInt = Number.parseInt(val, radix);
 
-		if (isNaN(valInt)) {
+		if (Number.isNaN(valInt)) {
 			throw new Error(`Invalid number: ${prefix + val} of radix ${radix}`);
 		}
 
@@ -271,7 +273,7 @@ export class Lexer implements IterableIterator<Token> {
 				const decimalPlaces = this.runRadix(10);
 				value += decimalPlaces;
 
-				let cur = this.ch0; // thanks typescript
+				const cur = this.ch0; // thanks typescript
 				if (decimalPlaces !== "" && (cur === "e" || cur === "E")) {
 					value += this.consume(); // e or E
 					value += this.eatExponent();
@@ -287,7 +289,7 @@ export class Lexer implements IterableIterator<Token> {
 			? Number.parseFloat(value)
 			: Number.parseInt(value);
 
-		if (isNaN(valueNumber)) {
+		if (Number.isNaN(valueNumber)) {
 			throw new Error("Invalid number");
 		}
 
@@ -300,7 +302,7 @@ export class Lexer implements IterableIterator<Token> {
 		if (this.ch0 === "+" || this.ch0 === "-") {
 			val += this.consume();
 		}
-		let expVal = this.runRadix(10);
+		const expVal = this.runRadix(10);
 
 		if (expVal === "") {
 			throw new Error("EmptyExponent");
@@ -315,7 +317,7 @@ export class Lexer implements IterableIterator<Token> {
 		let res = "";
 
 		while (this.ch0 !== null && isDigitOfRadix(this.ch0, radix))
-			res += this.consume()!;
+			res += this.consume();
 
 		return res;
 	}
@@ -350,7 +352,7 @@ export class Lexer implements IterableIterator<Token> {
 
 	private consume(): string | null {
 		const cur = this.ch0;
-		let iter_next = this.chars.next();
+		const iter_next = this.chars.next();
 		const next = iter_next.done ? null : (iter_next.value as string);
 		this.ch0 = this.ch1;
 		this.ch1 = next;
@@ -370,7 +372,7 @@ function isDigitOfRadix(str: string, radix: number): boolean {
 		return false;
 	}
 
-	const parsed = parseInt(str, radix);
+	const parsed = Number.parseInt(str, radix);
 
-	return !isNaN(parsed) && parsed.toString(radix) === str.toLowerCase();
+	return !Number.isNaN(parsed) && parsed.toString(radix) === str.toLowerCase();
 }
