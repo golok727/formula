@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createParser, dbgtoken, Lexer, TokenKind } from "./index";
+import { createParser, Lexer, TokenKind } from "../src/lib";
 
 describe("lexer", () => {
 	test("simple formula", () => {
