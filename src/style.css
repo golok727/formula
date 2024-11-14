@@ -27,7 +27,7 @@ body {
 .formula-editor {
 	background: var(--editor-background);
 	border-radius: 10px;
-	min-width: 40em;
+	width: 40em;
 	min-height: 20em;
 	overflow: hidden;
 }
@@ -42,6 +42,11 @@ body {
 .formula-editor-content-editable {
 	color: hsl(0 0 90% / 1);
 	font-size: .8rem;
+	min-height: 2rem;
+	white-space: pre-wrap;
+	text-wrap: wrap;
+	word-break: break-all;
+	word-wrap: break-word;
 	outline: none;
 	width: 100%;
 	padding: .4rem 0;
