@@ -2,7 +2,6 @@
 	"name": "formula",
 	"module": "index.ts",
 	"type": "module",
-
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build"
@@ -11,5 +10,8 @@
 		"@types/bun": "latest",
 		"vite": "^5.4.11",
 		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"shiki": "^1.22.2"
 	}
 }

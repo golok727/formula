@@ -1,0 +1,224 @@
+{
+	"displayName": "Formula Language",
+	"name": "formula",
+	"patterns": [
+		{
+			"include": "#expression"
+		}
+	],
+	"repository": {
+		"expression": {
+			"patterns": [
+				{ "include": "#literal" },
+				{ "include": "#operators" },
+				{ "include": "#entity" }
+			]
+		},
+
+		"number": {
+			"patterns": [
+				{
+					"captures": {
+						"1": {
+							"name": "storage.type.numeric.bigint.formula"
+						}
+					},
+					"match": "\\b(?<!\\$)0(?:x|X)[0-9a-fA-F][0-9a-fA-F_]*(n)?\\b(?!\\$)",
+					"name": "constant.numeric.hex.formula"
+				},
+				{
+					"captures": {
+						"1": {
+							"name": "storage.type.numeric.bigint.formula"
+						}
+					},
+					"match": "\\b(?<!\\$)0(?:b|B)[01][01_]*(n)?\\b(?!\\$)",
+					"name": "constant.numeric.binary.formula"
+				},
+				{
+					"captures": {
+						"1": {
+							"name": "storage.type.numeric.bigint.formula"
+						}
+					},
+					"match": "\\b(?<!\\$)0(?:o|O)?[0-7][0-7_]*(n)?\\b(?!\\$)",
+					"name": "constant.numeric.octal.formula"
+				},
+				{
+					"captures": {
+						"0": {
+							"name": "constant.numeric.decimal.formula"
+						},
+						"1": {
+							"name": "meta.delimiter.decimal.period.formula"
+						},
+						"10": {
+							"name": "meta.delimiter.decimal.period.formula"
+						},
+						"11": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"12": {
+							"name": "meta.delimiter.decimal.period.formula"
+						},
+						"13": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"14": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"2": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"3": {
+							"name": "meta.delimiter.decimal.period.formula"
+						},
+						"4": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"5": {
+							"name": "meta.delimiter.decimal.period.formula"
+						},
+						"6": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"7": {
+							"name": "storage.type.numeric.bigint.formula"
+						},
+						"8": {
+							"name": "meta.delimiter.decimal.period.formula"
+						},
+						"9": {
+							"name": "storage.type.numeric.bigint.formula"
+						}
+					},
+					"match": "(?<!\\$)(?:(?:\\b\\d[0-9_]*(\\.)\\d[0-9_]*[eE][+-]?\\d[0-9_]*(n)?\\b)|(?:\\b\\d[0-9_]*(\\.)[eE][+-]?\\d[0-9_]*(n)?\\b)|(?:\\B(\\.)\\d[0-9_]*[eE][+-]?\\d[0-9_]*(n)?\\b)|(?:\\b\\d[0-9_]*[eE][+-]?\\d[0-9_]*(n)?\\b)|(?:\\b\\d[0-9_]*(\\.)\\d[0-9_]*(n)?\\b)|(?:\\b\\d[0-9_]*(\\.)(n)?\\B)|(?:\\B(\\.)\\d[0-9_]*(n)?\\b)|(?:\\b\\d[0-9_]*(n)?\\b(?!\\.)))(?!\\$)"
+				}
+			]
+		},
+
+		"operators": {
+			"patterns": [
+				{
+					"match": "==|!=",
+					"name": "keyword.operator.comparison.formula"
+				},
+				{
+					"match": "<=|>=|<|>",
+					"name": "keyword.operator.relational.formula"
+				},
+				{
+					"match": "=",
+					"name": "keyword.operator.assignment.formula"
+				},
+				{
+					"match": "%|\\*|/|-|\\+",
+					"name": "keyword.operator.arithmetic.js"
+				}
+			]
+		},
+
+		"entity": {
+			"patterns": [
+				{
+					"begin": "\\b([a-z][\\w]*)\\b[\\s]*\\(",
+					"captures": {
+						"1": {
+							"name": "entity.name.function.formula"
+						}
+					},
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "$self"
+						}
+					]
+				},
+				{
+					"match": "\\b([a-z][\\w]*):\\s",
+					"name": "variable.parameter.formula"
+				},
+				{
+					"match": "\\b([a-z][\\w]*):",
+					"name": "entity.name.namespace.formula"
+				}
+			]
+		},
+
+		"literal": {
+			"patterns": [
+				{
+					"match": "\\b(?:true|false)\\b",
+					"name": "constant.language.formula"
+				},
+				{
+					"include": "#number"
+				},
+				{
+					"include": "#string"
+				}
+			]
+		},
+
+		"string": {
+			"patterns": [
+				{ "include": "#qstring-double" },
+				{ "include": "#qstring-single" }
+			]
+		},
+
+		"string-character-escape": {
+			"match": "\\\\.",
+			"name": "constant.character.escape.formula"
+		},
+
+		"qstring-double": {
+			"begin": "\"",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.formula"
+				}
+			},
+			"end": "(\")|((?:[^\\\\\\n])$)",
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.string.end.formula"
+				},
+				"2": {
+					"name": "invalid.illegal.newline.formula"
+				}
+			},
+			"name": "string.quoted.double.formula",
+			"patterns": [
+				{
+					"include": "#string-character-escape"
+				}
+			]
+		},
+
+		"qstring-single": {
+			"begin": "'",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.formula"
+				}
+			},
+			"end": "(\\')|((?:[^\\\\\\n])$)",
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.string.end.formula"
+				},
+				"2": {
+					"name": "invalid.illegal.newline.formula"
+				}
+			},
+			"name": "string.quoted.single.formula",
+			"patterns": [
+				{
+					"include": "#string-character-escape"
+				}
+			]
+		}
+	},
+	"scopeName": "source.formula"
+}
