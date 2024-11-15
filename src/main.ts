@@ -1,11 +1,16 @@
 import { createHighlighter, type Highlighter, type ThemedToken } from "shiki";
 import "./style.css";
+import { PieceTable } from "./text-buffer";
 
 console.log("Radhey Shyam");
 
 interface Selection {
 	start: number;
 	end: number;
+}
+
+function selectionIsCollapsed(selection: Selection) {
+	return selection.start === selection.end;
 }
 
 class Mountable {
@@ -44,13 +49,17 @@ class ResultView extends Mountable {
 }
 
 class ContentEditable extends Mountable {
-	private text = "";
+	private text: PieceTable;
 	private selection: Selection | null = null;
 
-	constructor(private highligher: Highlighter) {
+	constructor(
+		private highligher: Highlighter,
+		initial = "",
+	) {
 		super();
 		this.selection = null;
 
+		this.text = new PieceTable(initial);
 		this._view.classList.add("formula-editor-content-editable");
 		this._view.style.whiteSpace = "pre";
 		this._view.style.wordBreak = "break-word";
@@ -64,21 +73,92 @@ class ContentEditable extends Mountable {
 		return this._view;
 	}
 
+	insertText(pos: number, text: string) {
+		this.text.insert(pos, text);
+
+		this.render();
+		if (this.selection) {
+			this.setSelection(this.selection.start + 1, this.selection.end + 1);
+		}
+	}
+
+	deleteText(start: number, length: number) {
+		this.text.delete(start, length);
+
+		this.render();
+		if (this.selection) {
+			this.setSelection(start, start);
+		}
+	}
+
+	replaceText(start: number, length: number, replace: string) {
+		this.text.delete(start, length);
+		this.text.insert(start, replace);
+
+		this.render();
+		if (this.selection) {
+			this.setSelection(start + length, start + length + length);
+		}
+	}
+
+	private handleInput = (ev: InputEvent) => {
+		ev.preventDefault();
+		if (!this.selection) return;
+
+		switch (ev.inputType) {
+			case "insertText": {
+				if (!selectionIsCollapsed(this.selection)) {
+					const { start, end } = this.selection;
+					this.replaceText(start, end - start, ev.data as string);
+				}
+				this.insertText(this.selection.start, ev.data as string);
+				break;
+			}
+			case "insertFromPaste": {
+				const data = ev.dataTransfer;
+				if (!this.selection) return;
+				if (!data) break;
+				const text = data.getData("text/plain");
+
+				if (!selectionIsCollapsed(this.selection)) {
+					const { start, end } = this.selection;
+					this.replaceText(start, end - start, text);
+					break;
+				}
+				this.insertText(this.selection.start, text);
+				break;
+			}
+			case "deleteContentBackward": {
+				const { start, end } = this.selection;
+
+				if (selectionIsCollapsed(this.selection)) {
+					if (this.selection.start > 0) {
+						this.deleteText(start - 1, 1);
+					}
+				} else {
+					this.deleteText(start, end - start);
+				}
+				break;
+			}
+			case "insertParagraph": {
+				this.insertText(this.selection.start, "\n ");
+			}
+		}
+	};
 	override init(): void {
 		// TODO dispose
-		this._view.addEventListener("input", () => {
-			this.storeSelection();
-			requestAnimationFrame(() => {
-				this.render();
-				this.restoreSelection();
-			});
-		});
+
+		this.view.addEventListener("beforeinput", this.handleInput);
 
 		document.addEventListener("selectionchange", this.storeSelection);
 
 		this._view.focus();
 
 		this.render();
+	}
+
+	innerText() {
+		return this.text.getText();
 	}
 
 	setSelection(start: number, end: number, sync = true) {
@@ -168,9 +248,7 @@ class ContentEditable extends Mountable {
 	dispose() {}
 
 	render() {
-		this.text = this._view.innerText ?? "";
-
-		const code = this.text;
+		const code = this.text.getText();
 		const lines = this.highligher.codeToTokensBase(code, {
 			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			lang: "formula" as any,
@@ -207,9 +285,11 @@ class FormulaEditor extends Mountable {
 	private result = new ResultView();
 	private inlineEditor: ContentEditable;
 
-	constructor(highlighter: Highlighter) {
+	constructor(highlighter: Highlighter, initialText = "") {
 		super();
-		this.inlineEditor = new ContentEditable(highlighter);
+
+		this.inlineEditor = new ContentEditable(highlighter, initialText);
+		this._view.spellcheck = false;
 
 		this._view.classList.add("formula-editor");
 
@@ -224,6 +304,13 @@ class FormulaEditor extends Mountable {
 		this._view.append(this.header);
 		this.inlineEditor.mount(this.header);
 		this.result.mount(this._view);
+		const save = document.createElement("button");
+		save.innerText = "Save";
+		save.addEventListener("click", () => {
+			const text = this.inlineEditor.innerText();
+			localStorage.formula_code = text;
+		});
+		this._view.append(save);
 	}
 }
 
@@ -240,7 +327,10 @@ async function createFormulaHighlighter() {
 
 createFormulaHighlighter()
 	.then((highlighter) => {
-		const editor = new FormulaEditor(highlighter);
+		const editor = new FormulaEditor(
+			highlighter,
+			localStorage.formula_code ?? "",
+		);
 		editor.mount(document.body);
 	})
 	.catch(console.error);

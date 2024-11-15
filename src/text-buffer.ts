@@ -39,6 +39,20 @@ export class PieceTable {
 			remainingLength -= piece.length;
 		}
 
+		if (this.pieces.length <= 0) {
+			const piece: Piece = {
+				add: false,
+				length: 0,
+				start: 0,
+			};
+
+			if (posInBuffer > piece.length) {
+				throw new RangeError("position provided exceedes text length");
+			}
+			this.pieces.push(piece);
+			return { piece, index: 0, bufferOffset: piece.start + posInBuffer };
+		}
+
 		throw new RangeError("position provided exceedes text length");
 	}
 
@@ -116,16 +130,12 @@ export class PieceTable {
 				piece.start += length;
 				piece.length -= length;
 
-				if (piece.length === 0) this.pieces.splice(startPieceIndexToDelete, 1);
-
 				return;
 			}
 			// deleting at the end of the peice?
 			if (endPeiceBufferOffsetToDelete === piece.start + piece.length) {
 				piece.length -= length;
 
-				if (piece.length === 0)
-					this.pieces.splice(endPeiceBufferOffsetToDelete, 1);
 				return;
 			}
 		}
